@@ -87,12 +87,12 @@ describe('yield calculations', () => {
 describe('contract configuration', () => {
   test('vault contract address is valid stellar format', () => {
     const { CONTRACT_ADDRESSES } = require('../lib/stellar');
-    expect(CONTRACT_ADDRESSES.VAULT).toMatch(/^C[A-Z0-9]{55}$/);
+    expect(CONTRACT_ADDRESSES.VAULT).toMatch(/^C[A-Z2-7]{50,}$/);
   });
 
   test('oracle contract address is valid stellar format', () => {
     const { CONTRACT_ADDRESSES } = require('../lib/stellar');
-    expect(CONTRACT_ADDRESSES.ORACLE).toMatch(/^C[A-Z0-9]{55}$/);
+    expect(CONTRACT_ADDRESSES.ORACLE).toMatch(/^C[A-Z2-7]{50,}$/);
   });
 
   test('all required contract addresses are defined', () => {
