@@ -27,7 +27,7 @@ jobs:
           workspaces: contracts/stellar_vault
 
       - name: Install system dependencies
-        run: sudo apt-get update && sudo apt-get install -y pkg-config libdbus-1-dev
+        run: sudo apt-get update && sudo apt-get install -y pkg-config libdbus-1-dev libudev-dev
 
       - name: Install Stellar CLI
         run: |
@@ -162,7 +162,7 @@ jobs:
           targets: wasm32-unknown-unknown
 
       - name: Install system dependencies
-        run: sudo apt-get update && sudo apt-get install -y pkg-config libdbus-1-dev
+        run: sudo apt-get update && sudo apt-get install -y pkg-config libdbus-1-dev libudev-dev
 
       - name: Install Stellar CLI
         run: cargo install --locked stellar-cli
