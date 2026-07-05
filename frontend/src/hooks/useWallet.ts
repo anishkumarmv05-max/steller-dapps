@@ -15,6 +15,27 @@ interface UseWalletReturn extends WalletState {
   disconnect: () => void;
 }
 
+// Safely extract a string key from various freighter-api return shapes
+function extractKey(result: unknown): string {
+  if (typeof result === 'string') return result;
+  if (result && typeof result === 'object') {
+    const r = result as Record<string, unknown>;
+    if (typeof r['publicKey'] === 'string') return r['publicKey'];
+    if (typeof r['address'] === 'string') return r['address'];
+  }
+  return '';
+}
+
+// Safely check connection status from various freighter-api return shapes
+function extractConnected(result: unknown): boolean {
+  if (typeof result === 'boolean') return result;
+  if (result && typeof result === 'object') {
+    const r = result as Record<string, unknown>;
+    if (typeof r['isConnected'] === 'boolean') return r['isConnected'];
+  }
+  return false;
+}
+
 export function useWallet(): UseWalletReturn {
   const [state, setState] = useState<WalletState>({
     isConnected: false,
@@ -30,24 +51,26 @@ export function useWallet(): UseWalletReturn {
 
   const checkFreighter = async () => {
     try {
-      // Check if Freighter is installed
-      if (typeof window !== 'undefined') {
-        const { isConnected, getPublicKey } = await import('@stellar/freighter-api');
-        const connected = await isConnected();
-        
-        setState(prev => ({ ...prev, isFreighterInstalled: true }));
-        
-        if (connected) {
-          const key = await getPublicKey();
-          setState(prev => ({
-            ...prev,
-            isConnected: true,
-            publicKey: key,
-          }));
-        }
+      if (typeof window === 'undefined') return;
+
+      // Dynamic import to avoid SSR issues
+      const freighter = await import('@stellar/freighter-api');
+      const freighterModule = freighter as unknown as Record<string, (...args: unknown[]) => Promise<unknown>>;
+
+      const connResult = await freighterModule['isConnected']();
+      const connected = extractConnected(connResult);
+
+      setState(prev => ({ ...prev, isFreighterInstalled: true }));
+
+      if (connected && freighterModule['getPublicKey']) {
+        const keyResult = await freighterModule['getPublicKey']();
+        setState(prev => ({
+          ...prev,
+          isConnected: true,
+          publicKey: extractKey(keyResult),
+        }));
       }
     } catch {
-      // Freighter not installed or not available
       setState(prev => ({ ...prev, isFreighterInstalled: false }));
     }
   };
@@ -55,13 +78,20 @@ export function useWallet(): UseWalletReturn {
   const connect = useCallback(async () => {
     setState(prev => ({ ...prev, isLoading: true, error: null }));
     try {
-      const { requestAccess, getPublicKey } = await import('@stellar/freighter-api');
-      await requestAccess();
-      const key = await getPublicKey();
+      const freighter = await import('@stellar/freighter-api');
+      const freighterModule = freighter as unknown as Record<string, (...args: unknown[]) => Promise<unknown>>;
+
+      // setAllowed (v1.7+) replaced requestAccess (v1.6 and below)
+      const requestFn = freighterModule['setAllowed'] ?? freighterModule['requestAccess'];
+      if (typeof requestFn === 'function') {
+        await requestFn();
+      }
+
+      const keyResult = await freighterModule['getPublicKey']();
       setState(prev => ({
         ...prev,
         isConnected: true,
-        publicKey: key,
+        publicKey: extractKey(keyResult),
         isLoading: false,
       }));
     } catch (err) {
