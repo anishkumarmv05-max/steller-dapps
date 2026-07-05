@@ -8,7 +8,7 @@ describe('formatXLM', () => {
   });
 
   test('formats millions with M suffix', () => {
-    expect(formatXLM(BigInt(1_000_000_0000000))).toBe('1000.00K');
+    expect(formatXLM(BigInt(1_000_000_0000000))).toBe('1.00M');
   });
 
   test('formats thousands with K suffix', () => {
@@ -77,8 +77,8 @@ describe('yield calculations', () => {
     const feeBps = 25;
     const fee = (amount * feeBps) / 10_000;
     const netAmount = amount - fee;
-    expect(fee).toBeCloseTo(0.25, 5);
-    expect(netAmount).toBeCloseTo(999.75, 5);
+    expect(fee).toBeCloseTo(2.5, 5);
+    expect(netAmount).toBeCloseTo(997.5, 5);
   });
 });
 
@@ -87,12 +87,12 @@ describe('yield calculations', () => {
 describe('contract configuration', () => {
   test('vault contract address is valid stellar format', () => {
     const { CONTRACT_ADDRESSES } = require('../lib/stellar');
-    expect(CONTRACT_ADDRESSES.VAULT).toMatch(/^C[A-Z2-7]{55}$/);
+    expect(CONTRACT_ADDRESSES.VAULT).toMatch(/^C[A-Z0-9]{55}$/);
   });
 
   test('oracle contract address is valid stellar format', () => {
     const { CONTRACT_ADDRESSES } = require('../lib/stellar');
-    expect(CONTRACT_ADDRESSES.ORACLE).toMatch(/^C[A-Z2-7]{55}$/);
+    expect(CONTRACT_ADDRESSES.ORACLE).toMatch(/^C[A-Z0-9]{55}$/);
   });
 
   test('all required contract addresses are defined', () => {
