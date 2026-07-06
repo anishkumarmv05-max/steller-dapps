@@ -147,29 +147,35 @@ export function formatAddress(addr: string): string {
 
 export async function getTokenBalance(publicKey: string): Promise<bigint> {
   try {
-    const contract = new Contract(CONTRACT_ADDRESSES.TOKEN);
-    const ownerScVal = nativeToScVal(Address.fromString(publicKey), { type: 'address' });
-
-    const result = await rpc.simulateTransaction(
-      new TransactionBuilder(
-        new Account(publicKey, "0"),
-        { fee: BASE_FEE, networkPassphrase: NETWORK_PASSPHRASE }
-      )
-        .addOperation(contract.call('balance', ownerScVal))
-        .setTimeout(30)
-        .build()
-    );
-
-    if (SorobanRpc.Api.isSimulationSuccess(result) && result.result) {
-      return BigInt(scValToNative(result.result.retval) ?? 0);
+    // For native XLM (which is what we use), it's much faster and more reliable
+    // to query Horizon directly rather than simulating a Soroban transaction.
+    const account = await horizon.loadAccount(publicKey);
+    const nativeBalance = account.balances.find(b => b.asset_type === 'native');
+    
+    if (nativeBalance) {
+      // Convert string "100.0000000" to stroops bigint
+      const stroops = Math.floor(parseFloat(nativeBalance.balance) * 10_000_000);
+      return BigInt(stroops);
     }
-  } catch {}
+  } catch (err: any) {
+    // A 404 means the account is completely new/unfunded on testnet.
+    // It exists in the wallet but not on the ledger yet.
+  }
   return BigInt(0);
 }
 
 export async function buildContractTransaction(publicKey: string, method: string, args: any[] = []): Promise<string> {
   const contract = new Contract(CONTRACT_ADDRESSES.VAULT);
-  const account = await horizon.loadAccount(publicKey);
+  
+  let account;
+  try {
+    account = await horizon.loadAccount(publicKey);
+  } catch (err: any) {
+    if (err.response && err.response.status === 404) {
+      throw new Error("Your account is not funded on Testnet. Please fund it with Friendbot first!");
+    }
+    throw err;
+  }
 
   const tx = new TransactionBuilder(account, { fee: BASE_FEE, networkPassphrase: NETWORK_PASSPHRASE })
     .addOperation(contract.call(method, ...args))
