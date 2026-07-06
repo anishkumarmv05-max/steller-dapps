@@ -18,9 +18,9 @@ export const HORIZON_URL = 'https://horizon-testnet.stellar.org';
 
 // Deployed contract addresses (testnet)
 export const CONTRACT_ADDRESSES = {
-  VAULT: 'CBRFJJSDFQN7SFQCVUIBPVWKOCFWDKVLRJBKSTXBOBMMAMZMRXUNASQ',
-  ORACLE: 'CAOZBAHQHMTM2JQSNZNJZJMHTHD4RMRZ2CQHRMHG5XDIKGPUKPBZ6K',
-  TOKEN: 'CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2BHQGFB',
+  VAULT: process.env.NEXT_PUBLIC_VAULT_CONTRACT || 'CBRFJJSDFQN7SFQCVUIBPVWKOCFWDKVLRJBKSTXBOBMMAMZMRXUNASQ',
+  ORACLE: process.env.NEXT_PUBLIC_ORACLE_CONTRACT || 'CAOZBAHQHMTM2JQSNZNJZJMHTHD4RMRZ2CQHRMHG5XDIKGPUKPBZ6K',
+  TOKEN: process.env.NEXT_PUBLIC_TOKEN_CONTRACT || 'CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2BHQGFB',
 };
 
 export const rpc = new SorobanRpc.Server(RPC_URL);
@@ -177,13 +177,21 @@ export async function buildContractTransaction(publicKey: string, method: string
     throw err;
   }
 
-  const tx = new TransactionBuilder(account, { fee: BASE_FEE, networkPassphrase: NETWORK_PASSPHRASE })
+  let tx = new TransactionBuilder(account, { fee: BASE_FEE, networkPassphrase: NETWORK_PASSPHRASE })
     .addOperation(contract.call(method, ...args))
     .setTimeout(30)
     .build();
 
-  const preparedTx = await rpc.prepareTransaction(tx);
-  return preparedTx.toXDR();
+  const sim = await rpc.simulateTransaction(tx);
+  if (SorobanRpc.Api.isSimulationError(sim)) {
+    throw new Error(`Simulation failed: ${typeof sim.error === 'string' ? sim.error : JSON.stringify(sim.error)}`);
+  }
+  if (!SorobanRpc.Api.isSimulationSuccess(sim)) {
+    throw new Error("Simulation failed with unknown reason");
+  }
+
+  tx = SorobanRpc.assembleTransaction(tx, NETWORK_PASSPHRASE, sim).build();
+  return tx.toXDR();
 }
 
 export async function submitTransaction(signedXdr: string): Promise<string | null> {
