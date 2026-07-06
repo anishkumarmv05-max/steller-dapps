@@ -24,15 +24,15 @@ fn deploy_vault(env: &Env) -> (StellarVaultClient, Address, Address, Address) {
 }
 
 /// Helper: create a test token
-fn create_test_token(env: &Env, admin: &Address) -> (token::Client, Address) {
-    let token_id = env.register_stellar_asset_contract(admin.clone());
+fn create_test_token<'a>(env: &'a Env, admin: &Address) -> (token::Client<'a>, Address) {
+    let token_id = env.register_stellar_asset_contract_v2(admin.clone()).address();
     let token_client = token::Client::new(env, &token_id);
     (token_client, token_id)
 }
 
 /// Helper: fund an address with tokens
 fn fund_address(env: &Env, token: &token::Client, token_admin: &Address, to: &Address, amount: i128) {
-    let admin_client = token::AdminClient::new(env, &token.address);
+    let admin_client = token::StellarAssetClient::new(env, &token.address);
     admin_client.mint(to, &amount);
 }
 
@@ -81,7 +81,7 @@ fn test_deposit_creates_vault() {
     assert_eq!(vault.owner, user);
     assert_eq!(vault.deposited, 100_0000000i128);
     assert_eq!(vault.yield_earned, 0);
-    assert_eq!(vault.is_locked, false);
+    assert_eq!(vault.locked_amount, 0);
 
     let stats = client.get_stats();
     assert_eq!(stats.total_vaults, 1);
@@ -181,9 +181,9 @@ fn test_lock_vault_success() {
     client.deposit(&user, &token_id, &100_0000000i128);
 
     let lock_duration = 7 * 24 * 3600u64; // 7 days
-    let vault = client.lock_vault(&user, &lock_duration);
+    let vault = client.lock_vault(&user, &100_0000000i128, &lock_duration);
 
-    assert_eq!(vault.is_locked, true);
+    assert_eq!(vault.locked_amount, 100_0000000i128);
     assert!(vault.lock_until > 0);
 }
 
@@ -199,7 +199,7 @@ fn test_withdraw_from_locked_vault_fails() {
     client.deposit(&user, &token_id, &100_0000000i128);
 
     let lock_duration = 7 * 24 * 3600u64;
-    client.lock_vault(&user, &lock_duration);
+    client.lock_vault(&user, &100_0000000i128, &lock_duration);
 
     // Try to withdraw while locked
     client.withdraw(&user, &50_0000000i128);
@@ -216,7 +216,7 @@ fn test_lock_too_short_fails() {
     fund_address(&env, &token, &admin, &user, 1_000_0000000i128);
     client.deposit(&user, &token_id, &100_0000000i128);
 
-    client.lock_vault(&user, &3600u64); // Only 1 hour - too short
+    client.lock_vault(&user, &100_0000000i128, &3600u64); // Only 1 hour - too short
 }
 
 // ─── Test 5: Yield Calculation ────────────────────────────────────────────────
@@ -258,7 +258,7 @@ fn test_locked_vault_earns_more_yield() {
     client.deposit(&user2, &token_id, &100_0000000i128); // will be locked
 
     let lock_duration = 30 * 24 * 3600u64;
-    client.lock_vault(&user2, &lock_duration);
+    client.lock_vault(&user2, &100_0000000i128, &lock_duration);
 
     // Advance 30 days
     env.ledger().with_mut(|ledger| {
