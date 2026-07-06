@@ -21,17 +21,14 @@ As per the submission checklist, here are the required screenshots demonstrating
 
 ### 1. Mobile Responsive UI
 The platform is fully responsive and optimized for mobile devices.
-*(Replace with your mobile UI screenshot)*
-<img src="screenshots/mobile_ui.png" width="100%" alt="Mobile Responsive UI" />
+<img src="screenshots/mobile_UI_responsive.png" width="100%" alt="Mobile Responsive UI" />
 
 ### 2. CI/CD Pipeline Running
 Automated GitHub Actions workflow running tests and deploying the frontend.
-*(Replace with your GitHub Actions screenshot)*
-<img src="screenshots/cicd_pipeline.png" width="100%" alt="CI/CD Pipeline" />
+<img src="screenshots/CI_CD_pipline.png" width="100%" alt="CI/CD Pipeline" />
 
 ### 3. Test Output (3+ Passing Tests)
 Comprehensive Rust integration tests validating the smart contract logic.
-*(Replace with your cargo test output screenshot)*
 <img src="screenshots/test_output.png" width="100%" alt="Test Output" />
 
 ---
