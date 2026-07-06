@@ -14,7 +14,7 @@ pub struct Vault {
     pub deposited: i128,
     pub yield_earned: i128,
     pub last_updated: u64,
-    pub is_locked: bool,
+    pub locked_amount: i128,
     pub lock_until: u64,
 }
 
@@ -143,7 +143,7 @@ impl StellarVault {
                 deposited: amount,
                 yield_earned: 0,
                 last_updated: env.ledger().timestamp(),
-                is_locked: false,
+                locked_amount: 0,
                 lock_until: 0,
             }
         };
@@ -169,16 +169,22 @@ impl StellarVault {
             .get(&DataKey::Vault(owner.clone()))
             .expect("vault not found");
 
-        if vault.is_locked && env.ledger().timestamp() < vault.lock_until {
-            panic!("vault is locked");
+        let mut unlocked_amount = vault.deposited;
+        if env.ledger().timestamp() < vault.lock_until {
+            unlocked_amount -= vault.locked_amount;
         }
 
-        if amount > vault.deposited {
-            panic!("insufficient balance");
+        if amount > unlocked_amount {
+            panic!("insufficient unlocked balance");
         }
 
         let accrued = Self::calculate_yield(&env, &vault);
         vault.yield_earned += accrued;
+        
+        if env.ledger().timestamp() >= vault.lock_until && vault.locked_amount > 0 {
+            vault.locked_amount = 0;
+            vault.lock_until = 0;
+        }
         vault.deposited -= amount;
         vault.last_updated = env.ledger().timestamp();
 
@@ -219,6 +225,11 @@ impl StellarVault {
 
         vault.yield_earned = 0;
         vault.last_updated = env.ledger().timestamp();
+        
+        if env.ledger().timestamp() >= vault.lock_until && vault.locked_amount > 0 {
+            vault.locked_amount = 0;
+            vault.lock_until = 0;
+        }
 
         let token_client = token::Client::new(&env, &vault.token);
         token_client.transfer(&env.current_contract_address(), &owner, &total_yield);
@@ -234,12 +245,15 @@ impl StellarVault {
         total_yield
     }
 
-    /// Lock vault for boosted yield (inter-contract event)
-    pub fn lock_vault(env: Env, owner: Address, lock_duration_secs: u64) -> Vault {
+    pub fn lock_vault(env: Env, owner: Address, amount: i128, lock_duration_secs: u64) -> Vault {
         owner.require_auth();
 
         if lock_duration_secs < 86400 {
             panic!("minimum lock duration is 1 day");
+        }
+        
+        if amount <= 0 {
+            panic!("amount must be positive");
         }
 
         let mut vault: Vault = env
@@ -248,12 +262,21 @@ impl StellarVault {
             .get(&DataKey::Vault(owner.clone()))
             .expect("vault not found");
 
-        if vault.is_locked {
-            panic!("vault already locked");
+        let accrued = Self::calculate_yield(&env, &vault);
+        vault.yield_earned += accrued;
+        vault.last_updated = env.ledger().timestamp();
+
+        if env.ledger().timestamp() >= vault.lock_until {
+            vault.locked_amount = 0;
+        }
+        
+        let new_locked = vault.locked_amount + amount;
+        if new_locked > vault.deposited {
+            panic!("cannot lock more than deposited");
         }
 
         let until = env.ledger().timestamp() + lock_duration_secs;
-        vault.is_locked = true;
+        vault.locked_amount = new_locked;
         vault.lock_until = until;
 
         env.storage().persistent().set(&DataKey::Vault(owner.clone()), &vault);
@@ -331,14 +354,14 @@ impl StellarVault {
         let elapsed_secs = (now - vault.last_updated) as i128;
         let rate_bps: u32 = env.storage().instance().get(&DataKey::YieldRate).unwrap_or(500);
 
-        // Locked vaults earn 1.5x yield boost
-        let effective_rate = if vault.is_locked {
-            rate_bps as i128 * 15 / 10
-        } else {
-            rate_bps as i128
-        };
+        let unlocked_amount = vault.deposited - vault.locked_amount;
+        let normal_rate = rate_bps as i128;
+        let boosted_rate = rate_bps as i128 * 15 / 10;
 
         let seconds_per_year: i128 = 31_536_000;
-        (vault.deposited * effective_rate * elapsed_secs) / (10_000 * seconds_per_year)
+        let unlocked_yield = (unlocked_amount * normal_rate * elapsed_secs) / (10_000 * seconds_per_year);
+        let locked_yield = (vault.locked_amount * boosted_rate * elapsed_secs) / (10_000 * seconds_per_year);
+
+        unlocked_yield + locked_yield
     }
 }

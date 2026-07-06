@@ -19,6 +19,7 @@ interface VaultPanelProps {
 export default function VaultPanel({ wallet, onStatsRefresh }: VaultPanelProps) {
   const [tab, setTab] = useState<Tab>('deposit');
   const [amount, setAmount] = useState('');
+  const [lockAmount, setLockAmount] = useState('');
   const [lockDays, setLockDays] = useState('7');
   const [loading, setLoading] = useState(false);
   const [vaultData, setVaultData] = useState<VaultData | null>(null);
@@ -65,9 +66,11 @@ export default function VaultPanel({ wallet, onStatsRefresh }: VaultPanelProps) 
       } else if (tab === 'claim') {
         xdrString = await buildContractTransaction(wallet.publicKey, 'claim_yield', [ownerScVal]);
       } else if (tab === 'lock') {
+        const lockAmountStroops = BigInt(Math.floor(Number(lockAmount) * 10_000_000));
+        const lockAmountScVal = nativeToScVal(lockAmountStroops, { type: 'i128' });
         const lockSecs = BigInt(Number(lockDays) * 86_400);
         const lockScVal = nativeToScVal(lockSecs, { type: 'u64' });
-        xdrString = await buildContractTransaction(wallet.publicKey, 'lock_vault', [ownerScVal, lockScVal]);
+        xdrString = await buildContractTransaction(wallet.publicKey, 'lock_vault', [ownerScVal, lockAmountScVal, lockScVal]);
       }
 
       const signedXdr = await signTransaction(xdrString, { networkPassphrase: NETWORK_PASSPHRASE });
@@ -84,6 +87,7 @@ export default function VaultPanel({ wallet, onStatsRefresh }: VaultPanelProps) 
       }
 
       setAmount('');
+      setLockAmount('');
       // Wait a moment for Horizon to sync before refreshing
       setTimeout(async () => {
         await loadVaultData(wallet.publicKey!);
@@ -105,8 +109,14 @@ export default function VaultPanel({ wallet, onStatsRefresh }: VaultPanelProps) 
     { id: 'lock', label: 'Lock Vault' },
   ];
 
-  const isLocked = vaultData?.isLocked && vaultData.lockUntil > BigInt(Math.floor(Date.now() / 1000));
+  const isLocked = vaultData && vaultData.lockedAmount > BigInt(0) && vaultData.lockUntil > BigInt(Math.floor(Date.now() / 1000));
   const lockEndDate = vaultData?.lockUntil ? new Date(Number(vaultData.lockUntil) * 1000) : null;
+  
+  let unlockedAmountStroops = vaultData?.deposited || BigInt(0);
+  if (isLocked) {
+    unlockedAmountStroops -= vaultData!.lockedAmount;
+  }
+  const unlockedAmount = Number(unlockedAmountStroops) / 10_000_000;
 
   return (
     <div>
@@ -135,7 +145,7 @@ export default function VaultPanel({ wallet, onStatsRefresh }: VaultPanelProps) 
           {isLocked && (
             <div className="badge badge-locked">
               <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>
-              Locked until {lockEndDate?.toLocaleDateString()}
+              {formatXLM(vaultData!.lockedAmount)} Locked until {lockEndDate?.toLocaleDateString()}
             </div>
           )}
         </div>
@@ -255,16 +265,16 @@ export default function VaultPanel({ wallet, onStatsRefresh }: VaultPanelProps) 
                     value={amount}
                     onChange={e => setAmount(e.target.value)}
                   />
-                  {isLocked && (
+                  {isLocked && vaultData!.lockedAmount > 0 && (
                     <div style={{ marginTop: 12, padding: '10px 14px', background: 'rgba(251,191,36,0.07)', border: '1px solid rgba(251,191,36,0.2)', borderRadius: 'var(--radius-md)', fontSize: 13, color: 'var(--gold-400)' }}>
-                      ⚠️ Your vault is locked until {lockEndDate?.toLocaleDateString()}
+                      ⚠️ {formatXLM(vaultData!.lockedAmount)} XLM is locked until {lockEndDate?.toLocaleDateString()}. You can only withdraw your {unlockedAmount.toFixed(4)} XLM unlocked balance.
                     </div>
                   )}
                   <button
                     className="btn btn-secondary"
                     style={{ width: '100%', marginTop: 16, padding: '14px' }}
                     onClick={handleAction}
-                    disabled={!amount || loading || isLocked || Number(amount) <= 0}
+                    disabled={!amount || loading || Number(amount) <= 0 || Number(amount) > unlockedAmount}
                   >
                     {loading ? <><Spinner /> Withdrawing…</> : `Withdraw ${amount || '0'} XLM`}
                   </button>
@@ -303,8 +313,29 @@ export default function VaultPanel({ wallet, onStatsRefresh }: VaultPanelProps) 
                   <div style={{ marginBottom: 20, padding: '14px 16px', background: 'rgba(251,191,36,0.07)', border: '1px solid rgba(251,191,36,0.15)', borderRadius: 'var(--radius-md)' }}>
                     <div style={{ fontSize: 13, color: 'var(--gold-400)', fontWeight: 600, marginBottom: 4 }}>⚡ 1.5× Yield Boost</div>
                     <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
-                      Lock your vault to earn 7.5% APY instead of 5%. Withdrawals are disabled during the lock period.
+                      Lock your vault balance to earn 7.5% APY instead of 5%. Locked funds cannot be withdrawn until the lock expires.
                     </div>
+                  </div>
+
+                  <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 8, fontWeight: 500 }}>
+                    Amount to lock (XLM)
+                  </label>
+                  <div style={{ position: 'relative', marginBottom: 16 }}>
+                    <input
+                      type="number"
+                      className="input-field"
+                      placeholder="0.0000"
+                      value={lockAmount}
+                      onChange={e => setLockAmount(e.target.value)}
+                      min="0"
+                      step="0.0001"
+                    />
+                    <button
+                      style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', fontSize: 11, color: 'var(--cyan-400)', background: 'rgba(6,182,212,0.1)', border: '1px solid rgba(6,182,212,0.2)', borderRadius: 4, padding: '2px 8px', cursor: 'pointer' }}
+                      onClick={() => setLockAmount(unlockedAmount.toString())}
+                    >
+                      MAX UNLOCKED
+                    </button>
                   </div>
 
                   <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 8, fontWeight: 500 }}>
@@ -343,13 +374,15 @@ export default function VaultPanel({ wallet, onStatsRefresh }: VaultPanelProps) 
                     className="btn btn-gold"
                     style={{ width: '100%', padding: '14px' }}
                     onClick={handleAction}
-                    disabled={!vaultData || isLocked || loading}
+                    disabled={!vaultData || loading || !lockAmount || Number(lockAmount) <= 0 || Number(lockAmount) > unlockedAmount}
                   >
-                    {loading ? <><Spinner /> Locking…</> : `Lock for ${lockDays} Days`}
+                    {loading ? <><Spinner /> Locking…</> : `Lock ${lockAmount || '0'} XLM for ${lockDays} Days`}
                   </button>
 
-                  {isLocked && (
-                    <p style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'center', marginTop: 10 }}>Vault already locked</p>
+                  {isLocked && vaultData!.lockedAmount > 0 && (
+                    <p style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'center', marginTop: 10 }}>
+                      You already have {formatXLM(vaultData!.lockedAmount)} XLM locked. Locking more will extend the duration for ALL locked funds.
+                    </p>
                   )}
                 </div>
               )}

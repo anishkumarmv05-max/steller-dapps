@@ -18,7 +18,7 @@ export const HORIZON_URL = 'https://horizon-testnet.stellar.org';
 
 // Deployed contract addresses (testnet)
 export const CONTRACT_ADDRESSES = {
-  VAULT: 'CAAAN6MOXVPUDWNDPBMNVMQP4RIA7PS4RJDC3IMGQZ6FRBFIWSE6ZQHB',
+  VAULT: 'CCIMKAWGJKAFMHH62NWFQJVXDETZFQONYHKW7WGODT6FQLULUSZDZLDQ',
   ORACLE: 'CBDJT4YBL5C7GSHB7TEKKS3C6WAX5SWT4652H4R7A4MYL75S6LQ7YRPS',
   TOKEN: 'CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC',
 };
@@ -32,7 +32,7 @@ export interface VaultData {
   deposited: bigint;
   yieldEarned: bigint;
   lastUpdated: bigint;
-  isLocked: boolean;
+  lockedAmount: bigint;
   lockUntil: bigint;
 }
 
@@ -67,7 +67,7 @@ export async function getVault(ownerAddress: string): Promise<VaultData | null> 
         deposited: BigInt(val.deposited),
         yieldEarned: BigInt(val.yield_earned),
         lastUpdated: BigInt(val.last_updated),
-        isLocked: val.is_locked,
+        lockedAmount: BigInt(val.locked_amount),
         lockUntil: BigInt(val.lock_until),
       };
     }

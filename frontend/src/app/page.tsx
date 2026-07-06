@@ -85,9 +85,9 @@ export default function HomePage() {
             </h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {[
-                { label: 'StellarVault', addr: 'CBRFJJSDFQN7SFQCVUIBPVWKOCFWDKVLRJBKSTXBOBMMAMZMRXUNASQ' },
-                { label: 'PriceOracle', addr: 'CAOZBAHQHMTM2JQSNZNJZJMHTHD4RMRZ2CQHRMHG5XDIKGPUKPBZ6K' },
-                { label: 'Test Token', addr: 'CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2BHQGFB' },
+                { label: 'StellarVault', addr: 'CCIMKAWGJKAFMHH62NWFQJVXDETZFQONYHKW7WGODT6FQLULUSZDZLDQ' },
+                { label: 'PriceOracle', addr: 'CBDJT4YBL5C7GSHB7TEKKS3C6WAX5SWT4652H4R7A4MYL75S6LQ7YRPS' },
+                { label: 'Test Token', addr: 'CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC' },
               ].map(({ label, addr }) => (
                 <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
                   <span style={{ fontSize: 12, color: 'var(--text-muted)', minWidth: 100 }}>{label}</span>
