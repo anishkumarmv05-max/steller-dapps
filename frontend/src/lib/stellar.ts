@@ -9,6 +9,7 @@ import {
   scValToNative,
   nativeToScVal,
   Contract,
+  Account,
 } from '@stellar/stellar-sdk';
 
 export const NETWORK_PASSPHRASE = Networks.TESTNET;
@@ -49,7 +50,7 @@ export async function getVault(ownerAddress: string): Promise<VaultData | null> 
 
     const result = await rpc.simulateTransaction(
       new TransactionBuilder(
-        await horizon.loadAccount('GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN'),
+        new Account(ownerAddress, "0"),
         { fee: BASE_FEE, networkPassphrase: NETWORK_PASSPHRASE }
       )
         .addOperation(contract.call('get_vault', ownerScVal))
@@ -82,7 +83,7 @@ export async function getVaultStats(): Promise<VaultStats> {
 
     const result = await rpc.simulateTransaction(
       new TransactionBuilder(
-        await horizon.loadAccount('GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN'),
+        new Account('GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN', "0"),
         { fee: BASE_FEE, networkPassphrase: NETWORK_PASSPHRASE }
       )
         .addOperation(contract.call('get_stats'))
@@ -117,7 +118,7 @@ export async function getPendingYield(ownerAddress: string): Promise<bigint> {
 
     const result = await rpc.simulateTransaction(
       new TransactionBuilder(
-        await horizon.loadAccount('GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN'),
+        new Account(ownerAddress, "0"),
         { fee: BASE_FEE, networkPassphrase: NETWORK_PASSPHRASE }
       )
         .addOperation(contract.call('get_pending_yield', ownerScVal))
@@ -151,7 +152,7 @@ export async function getTokenBalance(publicKey: string): Promise<bigint> {
 
     const result = await rpc.simulateTransaction(
       new TransactionBuilder(
-        await horizon.loadAccount('GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN'),
+        new Account(publicKey, "0"),
         { fee: BASE_FEE, networkPassphrase: NETWORK_PASSPHRASE }
       )
         .addOperation(contract.call('balance', ownerScVal))
