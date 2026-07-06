@@ -70,10 +70,10 @@ export default function VaultPanel({ wallet, onStatsRefresh }: VaultPanelProps) 
         xdrString = await buildContractTransaction(wallet.publicKey, 'lock_vault', [ownerScVal, lockScVal]);
       }
 
-      const signed = await signTransaction(xdrString, { networkPassphrase: NETWORK_PASSPHRASE });
-      if (signed.error) throw new Error(signed.error);
+      const signedXdr = await signTransaction(xdrString, { networkPassphrase: NETWORK_PASSPHRASE });
+      if (!signedXdr) throw new Error("User rejected transaction");
       
-      const txHash = await submitTransaction(signed.transaction);
+      const txHash = await submitTransaction(signedXdr);
       setLastTxHash(txHash);
 
       switch (tab) {
