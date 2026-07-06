@@ -156,7 +156,7 @@ fn test_withdraw_partial() {
 }
 
 #[test]
-#[should_panic(expected = "insufficient balance")]
+#[should_panic(expected = "insufficient unlocked balance")]
 fn test_withdraw_too_much_fails() {
     let env = setup_env();
     let (client, _, admin, _) = deploy_vault(&env);
@@ -188,7 +188,7 @@ fn test_lock_vault_success() {
 }
 
 #[test]
-#[should_panic(expected = "vault is locked")]
+#[should_panic(expected = "insufficient unlocked balance")]
 fn test_withdraw_from_locked_vault_fails() {
     let env = setup_env();
     let (client, _, admin, _) = deploy_vault(&env);
