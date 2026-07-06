@@ -77,15 +77,12 @@ export default function VaultPanel({ wallet, onStatsRefresh }: VaultPanelProps) 
       if (!signedXdr) throw new Error("User rejected transaction");
       
       const txHash = await submitTransaction(signedXdr);
-      setLastTxHash(txHash);
-
-      switch (tab) {
-        case 'deposit': toast.success(`Deposited ${amount} XLM into vault`, { icon: '✅' }); break;
-        case 'withdraw': toast.success(`Withdrew ${amount} XLM from vault`, { icon: '💸' }); break;
-        case 'claim': toast.success(`Claimed yield successfully!`, { icon: '🎉' }); break;
-        case 'lock': toast.success(`Vault locked for ${lockDays} days!`, { icon: '🔒' }); break;
+      
+      if (!txHash) {
+        throw new Error('Transaction failed');
       }
 
+      setLastTxHash(txHash);
       setAmount('');
       setLockAmount('');
       // Wait a moment for Horizon to sync before refreshing
@@ -94,6 +91,23 @@ export default function VaultPanel({ wallet, onStatsRefresh }: VaultPanelProps) 
         await wallet.refreshBalance();
         onStatsRefresh();
       }, 3000);
+      
+      toast.success(
+        <div>
+          Transaction successful!
+          <div style={{ marginTop: 4 }}>
+            <a 
+              href={`https://stellar.expert/explorer/testnet/tx/${txHash}`} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              style={{ color: 'var(--cyan-400)', textDecoration: 'underline', fontSize: '0.9em' }}
+            >
+              View on Explorer ↗
+            </a>
+          </div>
+        </div>,
+        { duration: 8000, icon: '✅' }
+      );
     } catch (err: any) {
       console.error(err);
       toast.error(err.message || 'Transaction failed. Please try again.', { icon: '❌' });
