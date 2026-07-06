@@ -173,11 +173,8 @@ jobs:
 
       - name: Deploy to Testnet
         run: |
-          stellar contract deploy \
-            --wasm contracts/stellar_vault/target/wasm32-unknown-unknown/release/stellar_vault.wasm \
-            --source ${{ secrets.STELLAR_SECRET_KEY }} \
-            --network testnet
+          chmod +x scripts/deploy.sh
+          ./scripts/deploy.sh testnet
+        env:
+          STELLAR_SECRET_KEY: ${{ secrets.STELLAR_SECRET_KEY }}
         continue-on-error: true
-
-      - name: Notify deployment
-        run: echo "Contract deployment complete"
