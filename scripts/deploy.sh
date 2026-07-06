@@ -98,7 +98,8 @@ fi
 # ─── Initialize contracts ────────────────────────────────────────────────────
 echo "  [3/3] Initializing contracts..."
 
-ADMIN=$(stellar keys address default 2>/dev/null || echo "NO_ADMIN")
+stellar keys add deployer --secret-key "$STELLAR_SECRET_KEY" 2>/dev/null || true
+ADMIN=$(stellar keys address deployer 2>/dev/null || echo "NO_ADMIN")
 
 if [ "$VAULT_ADDR" != "DEPLOY_FAILED" ] && [ "$ADMIN" != "NO_ADMIN" ]; then
   stellar contract invoke \

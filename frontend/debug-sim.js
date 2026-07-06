@@ -1,4 +1,4 @@
-import { SorobanRpc, TransactionBuilder, Networks, BASE_FEE, Address, nativeToScVal, Contract, Horizon } from '@stellar/stellar-sdk';
+const { SorobanRpc, TransactionBuilder, Networks, BASE_FEE, Address, nativeToScVal, Contract, Horizon } = require('@stellar/stellar-sdk');
 
 const RPC_URL = 'https://soroban-testnet.stellar.org';
 const rpc = new SorobanRpc.Server(RPC_URL);
@@ -10,7 +10,7 @@ async function test() {
   try {
     const contract = new Contract(VAULT);
     // Use the user's public key
-    const publicKey = 'GCW36T47Q4C6K6G224QZOMZ747MTRVGBQ36O2ZJRYO55E2GIVG33IK35'; // from screenshot
+    const publicKey = 'GCCORB2CXTZBUMLITPJDFZ6HIJGJ6Q52EY6QHY4SHAGQ3LLSDQJL4B4Y'; 
     
     console.log("Loading account...");
     const account = await horizon.loadAccount(publicKey);
@@ -31,11 +31,12 @@ async function test() {
     
     if (SorobanRpc.Api.isSimulationError(sim)) {
       console.log("Simulation error:", sim.error);
+    } else if (!SorobanRpc.Api.isSimulationSuccess(sim)) {
+      console.log("Simulation failed for another reason:", sim);
     } else {
       console.log("Simulation success:", sim.events?.map(e => e.type));
-      console.log("Simulation Result:", JSON.stringify(sim, null, 2));
     }
-  } catch (err: any) {
+  } catch (err) {
     console.error("Caught error:", err?.response?.data || err.message);
   }
 }
