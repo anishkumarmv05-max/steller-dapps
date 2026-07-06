@@ -44,9 +44,9 @@ echo ""
 echo "🔨 Building Soroban contracts..."
 
 cd "$ROOT_DIR/contracts/stellar_vault"
-cargo build --release --target wasm32-unknown-unknown 2>&1 | tail -5
+stellar contract build 2>&1 | tail -10
 
-WASM_PATH="target/wasm32-unknown-unknown/release/stellar_vault.wasm"
+WASM_PATH="target/wasm32v1-none/release/stellar_vault.wasm"
 
 if [ ! -f "$WASM_PATH" ]; then
   echo -e "${RED}❌ WASM build failed${RESET}"

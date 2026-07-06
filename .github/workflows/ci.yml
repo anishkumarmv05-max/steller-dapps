@@ -167,10 +167,6 @@ jobs:
       - name: Install Stellar CLI
         run: cargo install --locked stellar-cli
 
-      - name: Build WASM
-        working-directory: contracts/stellar_vault
-        run: cargo build --release --target wasm32-unknown-unknown
-
       - name: Deploy to Testnet
         run: |
           chmod +x scripts/deploy.sh
