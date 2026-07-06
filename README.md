@@ -10,6 +10,8 @@
 
 ## 📖 Overview
 
+**🎥 [Watch Demo Video here!](https://drive.google.com/file/d/1fEzimegnPrvzK-9ItGlPlPxS-XMwsg-b/view?usp=sharing)**
+
 StellarVault is an end-to-end decentralized yield protocol on **Stellar Soroban**. Users deposit XLM into non-custodial smart vaults, earn real-time yield, and optionally lock their position for a **1.5× boosted APY**. An on-chain **PriceOracle** contract is called via inter-contract invocation to provide live token rates.
 
 ### Key Features
