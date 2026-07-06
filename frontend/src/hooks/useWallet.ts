@@ -60,6 +60,15 @@ export function useWallet(): UseWalletReturn {
     setState(prev => ({ ...prev, balance }));
   }, [state.publicKey]);
 
+  useEffect(() => {
+    if (state.isConnected && state.publicKey) {
+      const interval = setInterval(() => {
+        refreshBalance(state.publicKey!);
+      }, 5000);
+      return () => clearInterval(interval);
+    }
+  }, [state.isConnected, state.publicKey, refreshBalance]);
+
   const checkFreighter = async () => {
     try {
       if (typeof window === 'undefined') return;

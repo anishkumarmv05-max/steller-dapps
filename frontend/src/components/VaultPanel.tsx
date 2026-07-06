@@ -84,9 +84,12 @@ export default function VaultPanel({ wallet, onStatsRefresh }: VaultPanelProps) 
       }
 
       setAmount('');
-      await loadVaultData(wallet.publicKey);
-      await wallet.refreshBalance();
-      onStatsRefresh();
+      // Wait a moment for Horizon to sync before refreshing
+      setTimeout(async () => {
+        await loadVaultData(wallet.publicKey!);
+        await wallet.refreshBalance();
+        onStatsRefresh();
+      }, 3000);
     } catch (err: any) {
       console.error(err);
       toast.error(err.message || 'Transaction failed. Please try again.', { icon: '❌' });
