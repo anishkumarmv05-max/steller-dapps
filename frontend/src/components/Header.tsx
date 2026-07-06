@@ -8,6 +8,7 @@ interface HeaderProps {
     isConnected: boolean;
     publicKey: string | null;
     isLoading: boolean;
+    balance: bigint;
     connect: () => void;
     disconnect: () => void;
   };
@@ -79,6 +80,10 @@ export default function Header({ wallet }: HeaderProps) {
                 borderRadius: 'var(--radius-md)',
                 fontSize: 13,
               }}>
+                <span className="font-mono" style={{ color: 'var(--text-secondary)' }}>
+                  {(Number(wallet.balance) / 10_000_000).toFixed(2)} XLM
+                </span>
+                <span style={{ width: 1, height: 12, background: 'var(--border-default)' }} />
                 <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--emerald-400)', display: 'inline-block' }} />
                 <span className="font-mono">{formatAddress(wallet.publicKey)}</span>
               </div>

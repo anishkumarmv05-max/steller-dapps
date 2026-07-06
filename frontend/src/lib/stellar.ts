@@ -141,3 +141,59 @@ export function formatAddress(addr: string): string {
   if (!addr || addr.length < 12) return addr;
   return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
 }
+
+export async function getTokenBalance(publicKey: string): Promise<bigint> {
+  try {
+    const contract = new Contract(CONTRACT_ADDRESSES.TOKEN);
+    const ownerScVal = nativeToScVal(Address.fromString(publicKey), { type: 'address' });
+
+    const result = await rpc.simulateTransaction(
+      new TransactionBuilder(
+        await rpc.getAccount('GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN'),
+        { fee: BASE_FEE, networkPassphrase: NETWORK_PASSPHRASE }
+      )
+        .addOperation(contract.call('balance', ownerScVal))
+        .setTimeout(30)
+        .build()
+    );
+
+    if (SorobanRpc.Api.isSimulationSuccess(result) && result.result) {
+      return BigInt(scValToNative(result.result.retval) ?? 0);
+    }
+  } catch {}
+  return BigInt(0);
+}
+
+export async function buildContractTransaction(publicKey: string, method: string, args: any[] = []): Promise<string> {
+  const contract = new Contract(CONTRACT_ADDRESSES.VAULT);
+  const account = await rpc.getAccount(publicKey);
+
+  const tx = new TransactionBuilder(account, { fee: BASE_FEE, networkPassphrase: NETWORK_PASSPHRASE })
+    .addOperation(contract.call(method, ...args))
+    .setTimeout(30)
+    .build();
+
+  const preparedTx = await rpc.prepareTransaction(tx);
+  return preparedTx.toXDR();
+}
+
+export async function submitTransaction(signedXdr: string): Promise<string | null> {
+  const sendResult = await rpc.sendTransaction(TransactionBuilder.fromXDR(signedXdr, NETWORK_PASSPHRASE) as any);
+  
+  if (sendResult.status === 'ERROR') {
+    throw new Error('Transaction submission failed');
+  }
+
+  // Poll for completion
+  let status = await rpc.getTransaction(sendResult.hash);
+  while (status.status === 'NOT_FOUND') {
+    await new Promise(r => setTimeout(r, 2000));
+    status = await rpc.getTransaction(sendResult.hash);
+  }
+
+  if (status.status === 'SUCCESS') {
+    return sendResult.hash;
+  } else {
+    throw new Error('Transaction failed on-chain');
+  }
+}

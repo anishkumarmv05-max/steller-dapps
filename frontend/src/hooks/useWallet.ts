@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { getTokenBalance } from '../lib/stellar';
 
 interface WalletState {
   isConnected: boolean;
@@ -8,11 +9,13 @@ interface WalletState {
   isFreighterInstalled: boolean;
   isLoading: boolean;
   error: string | null;
+  balance: bigint;
 }
 
 interface UseWalletReturn extends WalletState {
   connect: () => Promise<void>;
   disconnect: () => void;
+  refreshBalance: () => Promise<void>;
 }
 
 // Safely extract a string key from various freighter-api return shapes
@@ -43,11 +46,19 @@ export function useWallet(): UseWalletReturn {
     isFreighterInstalled: false,
     isLoading: false,
     error: null,
+    balance: BigInt(0),
   });
 
   useEffect(() => {
     checkFreighter();
   }, []);
+
+  const refreshBalance = useCallback(async (pk?: string) => {
+    const keyToUse = pk || state.publicKey;
+    if (!keyToUse) return;
+    const balance = await getTokenBalance(keyToUse);
+    setState(prev => ({ ...prev, balance }));
+  }, [state.publicKey]);
 
   const checkFreighter = async () => {
     try {
@@ -64,11 +75,13 @@ export function useWallet(): UseWalletReturn {
 
       if (connected && freighterModule['getPublicKey']) {
         const keyResult = await freighterModule['getPublicKey']();
+        const pk = extractKey(keyResult);
         setState(prev => ({
           ...prev,
           isConnected: true,
-          publicKey: extractKey(keyResult),
+          publicKey: pk,
         }));
+        refreshBalance(pk);
       }
     } catch {
       setState(prev => ({ ...prev, isFreighterInstalled: false }));
@@ -88,12 +101,14 @@ export function useWallet(): UseWalletReturn {
       }
 
       const keyResult = await freighterModule['getPublicKey']();
+      const pk = extractKey(keyResult);
       setState(prev => ({
         ...prev,
         isConnected: true,
-        publicKey: extractKey(keyResult),
+        publicKey: pk,
         isLoading: false,
       }));
+      refreshBalance(pk);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to connect wallet';
       setState(prev => ({
@@ -102,15 +117,16 @@ export function useWallet(): UseWalletReturn {
         error: message,
       }));
     }
-  }, []);
+  }, [refreshBalance]);
 
   const disconnect = useCallback(() => {
     setState(prev => ({
       ...prev,
       isConnected: false,
       publicKey: null,
+      balance: BigInt(0),
     }));
   }, []);
 
-  return { ...state, connect, disconnect };
+  return { ...state, connect, disconnect, refreshBalance };
 }

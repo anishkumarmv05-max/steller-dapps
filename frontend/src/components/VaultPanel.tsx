@@ -1,8 +1,8 @@
-'use client';
-
 import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
-import { formatXLM, formatAddress, getVault, getPendingYield, CONTRACT_ADDRESSES, type VaultData } from '@/lib/stellar';
+import { signTransaction } from '@stellar/freighter-api';
+import { Address, nativeToScVal, xdr } from '@stellar/stellar-sdk';
+import { formatXLM, formatAddress, getVault, getPendingYield, CONTRACT_ADDRESSES, buildContractTransaction, submitTransaction, NETWORK_PASSPHRASE, type VaultData } from '@/lib/stellar';
 
 type Tab = 'deposit' | 'withdraw' | 'claim' | 'lock';
 
@@ -11,6 +11,7 @@ interface VaultPanelProps {
     isConnected: boolean;
     publicKey: string | null;
     connect: () => void;
+    refreshBalance: () => Promise<void>;
   };
   onStatsRefresh: () => void;
 }
@@ -23,6 +24,7 @@ export default function VaultPanel({ wallet, onStatsRefresh }: VaultPanelProps) 
   const [vaultData, setVaultData] = useState<VaultData | null>(null);
   const [pendingYield, setPendingYield] = useState<bigint>(BigInt(0));
   const [loadingVault, setLoadingVault] = useState(false);
+  const [lastTxHash, setLastTxHash] = useState<string | null>(null);
 
   useEffect(() => {
     if (wallet.isConnected && wallet.publicKey) {
@@ -48,29 +50,46 @@ export default function VaultPanel({ wallet, onStatsRefresh }: VaultPanelProps) 
     setLoading(true);
 
     try {
-      // Simulated transaction (replace with real soroban invocation)
-      await new Promise(r => setTimeout(r, 1800));
+      let xdrString = '';
+      const ownerScVal = nativeToScVal(Address.fromString(wallet.publicKey), { type: 'address' });
+      const tokenScVal = nativeToScVal(Address.fromString(CONTRACT_ADDRESSES.TOKEN), { type: 'address' });
+
+      if (tab === 'deposit') {
+        const amountStroops = BigInt(Math.floor(Number(amount) * 10_000_000));
+        const amountScVal = nativeToScVal(amountStroops, { type: 'i128' });
+        xdrString = await buildContractTransaction(wallet.publicKey, 'deposit', [ownerScVal, tokenScVal, amountScVal]);
+      } else if (tab === 'withdraw') {
+        const amountStroops = BigInt(Math.floor(Number(amount) * 10_000_000));
+        const amountScVal = nativeToScVal(amountStroops, { type: 'i128' });
+        xdrString = await buildContractTransaction(wallet.publicKey, 'withdraw', [ownerScVal, amountScVal]);
+      } else if (tab === 'claim') {
+        xdrString = await buildContractTransaction(wallet.publicKey, 'claim_yield', [ownerScVal]);
+      } else if (tab === 'lock') {
+        const lockSecs = BigInt(Number(lockDays) * 86_400);
+        const lockScVal = nativeToScVal(lockSecs, { type: 'u64' });
+        xdrString = await buildContractTransaction(wallet.publicKey, 'lock_vault', [ownerScVal, lockScVal]);
+      }
+
+      const signed = await signTransaction(xdrString, { networkPassphrase: NETWORK_PASSPHRASE });
+      if (signed.error) throw new Error(signed.error);
+      
+      const txHash = await submitTransaction(signed.transaction);
+      setLastTxHash(txHash);
 
       switch (tab) {
-        case 'deposit':
-          toast.success(`Deposited ${amount} XLM into vault`, { icon: '✅' });
-          break;
-        case 'withdraw':
-          toast.success(`Withdrew ${amount} XLM from vault`, { icon: '💸' });
-          break;
-        case 'claim':
-          toast.success(`Claimed ${formatXLM(pendingYield)} XLM yield`, { icon: '🎉' });
-          break;
-        case 'lock':
-          toast.success(`Vault locked for ${lockDays} days — 1.5× boost active`, { icon: '🔒' });
-          break;
+        case 'deposit': toast.success(`Deposited ${amount} XLM into vault`, { icon: '✅' }); break;
+        case 'withdraw': toast.success(`Withdrew ${amount} XLM from vault`, { icon: '💸' }); break;
+        case 'claim': toast.success(`Claimed yield successfully!`, { icon: '🎉' }); break;
+        case 'lock': toast.success(`Vault locked for ${lockDays} days!`, { icon: '🔒' }); break;
       }
 
       setAmount('');
       await loadVaultData(wallet.publicKey);
+      await wallet.refreshBalance();
       onStatsRefresh();
-    } catch (err) {
-      toast.error('Transaction failed. Please try again.', { icon: '❌' });
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.message || 'Transaction failed. Please try again.', { icon: '❌' });
     } finally {
       setLoading(false);
     }
@@ -333,14 +352,16 @@ export default function VaultPanel({ wallet, onStatsRefresh }: VaultPanelProps) 
               )}
 
               {/* TX Hash placeholder */}
-              <div style={{ marginTop: 20, padding: '10px 14px', background: 'var(--bg-void)', borderRadius: 'var(--radius-sm)', fontSize: 12, color: 'var(--text-muted)', display: 'flex', gap: 8, alignItems: 'center' }}>
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                Last TX:&nbsp;
-                <code className="font-mono" style={{ color: 'var(--cyan-400)' }}>
-                  a3f8c2d1e4b9…7f2a
-                </code>
-                <a href="https://stellar.expert/explorer/testnet/tx/a3f8c2d1e4b97f2a" target="_blank" rel="noopener noreferrer" style={{ marginLeft: 'auto', color: 'var(--text-muted)' }}>↗</a>
-              </div>
+              {lastTxHash && (
+                <div style={{ marginTop: 20, padding: '10px 14px', background: 'var(--bg-void)', borderRadius: 'var(--radius-sm)', fontSize: 12, color: 'var(--text-muted)', display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                  Last TX:&nbsp;
+                  <code className="font-mono" style={{ color: 'var(--cyan-400)' }}>
+                    {formatAddress(lastTxHash)}
+                  </code>
+                  <a href={`https://stellar.expert/explorer/testnet/tx/${lastTxHash}`} target="_blank" rel="noopener noreferrer" style={{ marginLeft: 'auto', color: 'var(--text-muted)' }}>↗</a>
+                </div>
+              )}
             </>
           )}
         </div>
