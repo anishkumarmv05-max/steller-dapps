@@ -190,7 +190,7 @@ export async function buildContractTransaction(publicKey: string, method: string
     throw new Error("Simulation failed with unknown reason");
   }
 
-  tx = SorobanRpc.assembleTransaction(tx, NETWORK_PASSPHRASE, sim).build();
+  tx = SorobanRpc.assembleTransaction(tx, sim).build();
   return tx.toXDR();
 }
 
