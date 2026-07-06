@@ -1,5 +1,6 @@
 import {
   SorobanRpc,
+  Horizon,
   TransactionBuilder,
   Networks,
   BASE_FEE,
@@ -22,6 +23,7 @@ export const CONTRACT_ADDRESSES = {
 };
 
 export const rpc = new SorobanRpc.Server(RPC_URL);
+export const horizon = new Horizon.Server(HORIZON_URL);
 
 export interface VaultData {
   owner: string;
@@ -47,7 +49,7 @@ export async function getVault(ownerAddress: string): Promise<VaultData | null> 
 
     const result = await rpc.simulateTransaction(
       new TransactionBuilder(
-        await rpc.getAccount('GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN'),
+        await horizon.loadAccount('GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN'),
         { fee: BASE_FEE, networkPassphrase: NETWORK_PASSPHRASE }
       )
         .addOperation(contract.call('get_vault', ownerScVal))
@@ -80,7 +82,7 @@ export async function getVaultStats(): Promise<VaultStats> {
 
     const result = await rpc.simulateTransaction(
       new TransactionBuilder(
-        await rpc.getAccount('GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN'),
+        await horizon.loadAccount('GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN'),
         { fee: BASE_FEE, networkPassphrase: NETWORK_PASSPHRASE }
       )
         .addOperation(contract.call('get_stats'))
@@ -115,7 +117,7 @@ export async function getPendingYield(ownerAddress: string): Promise<bigint> {
 
     const result = await rpc.simulateTransaction(
       new TransactionBuilder(
-        await rpc.getAccount('GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN'),
+        await horizon.loadAccount('GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN'),
         { fee: BASE_FEE, networkPassphrase: NETWORK_PASSPHRASE }
       )
         .addOperation(contract.call('get_pending_yield', ownerScVal))
@@ -149,7 +151,7 @@ export async function getTokenBalance(publicKey: string): Promise<bigint> {
 
     const result = await rpc.simulateTransaction(
       new TransactionBuilder(
-        await rpc.getAccount('GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN'),
+        await horizon.loadAccount('GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN'),
         { fee: BASE_FEE, networkPassphrase: NETWORK_PASSPHRASE }
       )
         .addOperation(contract.call('balance', ownerScVal))
@@ -166,7 +168,7 @@ export async function getTokenBalance(publicKey: string): Promise<bigint> {
 
 export async function buildContractTransaction(publicKey: string, method: string, args: any[] = []): Promise<string> {
   const contract = new Contract(CONTRACT_ADDRESSES.VAULT);
-  const account = await rpc.getAccount(publicKey);
+  const account = await horizon.loadAccount(publicKey);
 
   const tx = new TransactionBuilder(account, { fee: BASE_FEE, networkPassphrase: NETWORK_PASSPHRASE })
     .addOperation(contract.call(method, ...args))
