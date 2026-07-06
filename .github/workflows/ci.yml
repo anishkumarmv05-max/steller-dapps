@@ -124,7 +124,7 @@ jobs:
     name: 🚀 Deploy to Vercel
     runs-on: ubuntu-latest
     needs: [build, contract-tests]
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push' && secrets.VERCEL_TOKEN != ''
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
 
     steps:
       - name: Checkout code
@@ -150,7 +150,7 @@ jobs:
     name: 📡 Deploy Contracts
     runs-on: ubuntu-latest
     needs: [contract-tests]
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push' && secrets.STELLAR_SECRET_KEY != ''
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
 
     steps:
       - name: Checkout code
