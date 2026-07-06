@@ -73,7 +73,7 @@ export default function VaultPanel({ wallet, onStatsRefresh }: VaultPanelProps) 
         xdrString = await buildContractTransaction(wallet.publicKey, 'lock_vault', [ownerScVal, lockAmountScVal, lockScVal]);
       }
 
-      const signedXdr = await signTransaction(xdrString, { networkPassphrase: NETWORK_PASSPHRASE });
+      const signedXdr = await signTransaction(xdrString, { network: 'TESTNET', networkPassphrase: NETWORK_PASSPHRASE });
       if (!signedXdr) throw new Error("User rejected transaction");
       
       const txHash = await submitTransaction(signedXdr);
@@ -110,7 +110,11 @@ export default function VaultPanel({ wallet, onStatsRefresh }: VaultPanelProps) 
       );
     } catch (err: any) {
       console.error(err);
-      toast.error(err.message || 'Transaction failed. Please try again.', { icon: '❌' });
+      if (err.message && err.message.includes('Bad union switch')) {
+        toast.error('Freighter wallet is out of date. Please update the Freighter extension in your browser to support the latest Soroban network upgrade.', { icon: '🚨', duration: 8000 });
+      } else {
+        toast.error(err.message || 'Transaction failed. Please try again.', { icon: '❌' });
+      }
     } finally {
       setLoading(false);
     }
