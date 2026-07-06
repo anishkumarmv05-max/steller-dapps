@@ -43,7 +43,7 @@ The smart contracts are actively deployed on the Stellar Testnet.
 - **StellarVault Contract Address**: `CCIMKAWGJKAFMHH62NWFQJVXDETZFQONYHKW7WGODT6FQLULUSZDZLDQ`
 - **PriceOracle Contract Address**: `CBDJT4YBL5C7GSHB7TEKKS3C6WAX5SWT4652H4R7A4MYL75S6LQ7YRPS`
 - **Test Token Address**: `CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC`
-- **Example Transaction Hash**: `a3f8c2d1e4b97f2a55c81d3e6f0b4a9c7e2d5f8a1b4c7e0d3f6a9b2c5e8f1a4` (Deposit/Lock Transaction)
+- **Example Transaction Hash**: `befb0ef4f909ed3bfdc48357d67ad9bf79056616fbcab167a75bdd99f34a6bc6` (Deposit Transaction)
 
 ---
 
